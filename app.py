@@ -18,6 +18,7 @@ import pyautogui
 
 import threading
 import sys
+import os
 
 drawingModule = mediapipe.solutions.drawing_utils
 handsModule = mediapipe.solutions.hands
@@ -32,6 +33,25 @@ cap = cv2.VideoCapture(0)
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 savedCommands = {}
+commandMap = {
+    'click': [[pyautogui.click, []]],
+    'scroll': [[pyautogui.press, ['pdgn']]],
+    'right-click': [[pyautogui.click, ['right']]],
+    'open-browser': [
+        [pyautogui.press, ['win']],
+        [pyautogui.typewrite, ['chrome']],
+        [pyautogui.press, ['enter']]
+    ],
+    'open-url': [
+        [pyautogui.press, ['win']],
+        [pyautogui.typewrite, ['chrome']],
+        [pyautogui.press, ['enter']],
+        [pyautogui.hotkey, ['ctrl', 'l']],
+    ],
+    'open-game': [
+        [os.system, ['"D:\\Desktop\\Geometry.Dash.v2.1\\GeometryDash.exe"']],
+    ]
+}
 isLearning = False
 learnCommandName = ""
 
@@ -58,7 +78,7 @@ def displayFrame(frameArg=None):
     if frameArg:
         frame = frameArg
     frame1 = cv2.resize(frame, (640, 480))
-    run(frame1)
+    # run(frame1)
 
     key = cv2.waitKey(1) & 0xFF
     return frame1
@@ -70,7 +90,7 @@ def recordOnce(hands):
     
     #Determines the frame size, 640 x 480 offers a nice balance between speed and accurate identification
     frame1 = cv2.resize(frame, (640, 480))
-    run(frame1)
+    # run(frame1)
     
     #produces the hand framework overlay ontop of the hand, you can choose the colour here too)
     results = hands.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
@@ -93,25 +113,9 @@ def recordOnce(hands):
 def learnCommand(commandName, btn, hands, root, panel):
     global savedCommands
     global isLearning
+    global commandMap
     isLearning = True
     currentFrame = []
-
-    commandMap = {
-        'click': [[pyautogui.click, []]],
-        'scroll': [[pyautogui.press, ['pdgn']]],
-        'right-click': [[pyautogui.click, ['right']]],
-        'open-browser': [
-            [pyautogui.press, ['win']],
-            [pyautogui.typewrite, ['chrome']],
-            [pyautogui.press, ['enter']]
-        ],
-        'open-url': [
-            [pyautogui.press, ['win']],
-            [pyautogui.typewrite, ['chrome']],
-            [pyautogui.press, ['enter']],
-            [pyautogui.hotkey, ['ctrl', 'l']],
-        ]
-    }
 
     start = time.time()
     tempCommand = {}
@@ -248,14 +252,21 @@ def main(root):
     #     learnCommandName = 'scroll'
     #     isLearning = True
 
-    options = [
-        'click',
-        'click',
-        'right-click',
-        'scroll',
-        'open-url',
-        'open-browser'
-    ]
+    
+    def getOptions():
+        op = []
+        for option in commandMap.keys():
+            op.append(option)
+        return op
+    #  [
+    #     'click',
+    #     'click',
+    #     'right-click',
+    #     'scroll',
+    #     'open-url',
+    #     'open-browser'
+    # ]
+    options = getOptions()
 
     clicked = StringVar()
 
