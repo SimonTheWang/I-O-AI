@@ -3,7 +3,7 @@ import dlib
 import numpy as np
 import pyautogui
 
-fname = './models/shape_predictor_68_face_landmarks.dat'
+fname = './models/shape_predictor_68_face_landmarks_GTX.dat'
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(fname)
 previous = None
@@ -34,8 +34,8 @@ def run(frame):
         topRight = (shape[42][0], 0)
         bottom = (0, shape[33][1] - 10)
 
-        scaled_x = pyautogui.size()[0] / (topRight[0] - topLeft[0]) * (nose[0] - topLeft[0])
-        scaled_y = pyautogui.size()[1] / (bottom[1] - topLeft[1]) * (nose[1] - topLeft[1])
+        scaled_x = pyautogui.size()[0] / ((topRight[0] - topLeft[0]) * (nose[0] - topLeft[0]))
+        scaled_y = pyautogui.size()[1] / ((bottom[1] - topLeft[1]) * (nose[1] - topLeft[1]))
 
         if (previous == None):
             previous = nose

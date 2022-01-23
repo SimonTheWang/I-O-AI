@@ -1,5 +1,7 @@
+from inspect import currentframe
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
 import cv2
 import dlib
 import pyautogui
@@ -7,11 +9,15 @@ from PIL import Image, ImageTk
 from point_detection import *
 import google_cloud_speech_to_text as text_to_speech
 import time
+import math
 
 import mediapipe
 import cv2
 import edwin
 import pyautogui
+
+import threading
+import sys
 
 drawingModule = mediapipe.solutions.drawing_utils
 handsModule = mediapipe.solutions.hands
@@ -26,7 +32,19 @@ cap = cv2.VideoCapture(0)
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 savedCommands = {}
+isLearning = False
+learnCommandName = ""
+
+pyautogui.PAUSE = 1
     
+def updateGUI(root, panel, frame):
+    img = Image.fromarray(frame)
+    imgtk = ImageTk.PhotoImage(image = img)
+    panel.imgtk = imgtk
+    panel.config(image = imgtk)
+    root.update()
+
+
 def parseNormalizedList(normalizedList):
     for point in reversed(normalizedList):
         point.x -= normalizedList[0].x
@@ -40,8 +58,8 @@ def displayFrame(frameArg=None):
     if frameArg:
         frame = frameArg
     frame1 = cv2.resize(frame, (640, 480))
-    run(frame1)
-    cv2.imshow('Frame', frame1)
+    # run(frame1)
+    # cv2.imshow('Frame', frame1)
     key = cv2.waitKey(1) & 0xFF
     return frame1
 
@@ -52,7 +70,7 @@ def recordOnce(hands):
     
     #Determines the frame size, 640 x 480 offers a nice balance between speed and accurate identification
     frame1 = cv2.resize(frame, (640, 480))
-    run(frame1)
+    # run(frame1)
     
     #produces the hand framework overlay ontop of the hand, you can choose the colour here too)
     results = hands.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
@@ -69,22 +87,70 @@ def recordOnce(hands):
                 normalizedList.append(normalizedLandmark)
     
     #Below shows the current frame to the desktop 
-    print(normalizedList)
+    # print(normalizedList)
     # cv2.waitKey(1)
     return (normalizedList, frame1)
 
-def learnCommand(commandName):
+def learnCommand(commandName, btn, hands, root, panel):
     global savedCommands
+    global isLearning
+    isLearning = True
+    currentFrame = []
+
     commandMap = {
         'click': [[pyautogui.click, []]],
         'scroll': [[pyautogui.press, ['pdgn']]],
-        'right': [[pyautogui.click, ['right']]]
+        'right-click': [[pyautogui.click, ['right']]],
+        'open-browser': [
+            [pyautogui.press, ['win']],
+            [pyautogui.typewrite, ['chrome']],
+            [pyautogui.press, ['enter']]
+        ],
+        'open-url': [
+            [pyautogui.press, ['win']],
+            [pyautogui.typewrite, ['chrome']],
+            [pyautogui.press, ['enter']],
+            [pyautogui.hotkey, ['ctrl', 'l']],
+        ]
     }
 
     start = time.time()
     tempCommand = {}
 
-    normalizedList = recordOnce()
+    if commandName == 'open-url':
+        while True:
+            difference = time.time() - start
+            if difference >= 5:
+                break
+            
+            number = math.ceil(5 - difference)
+            btn.config(text=f'Listening for URL in {number} seconds...')
+            updateGUI(root, panel, displayFrame())
+        
+        URL = text_to_speech.getURL()
+        print("In app.py")
+        print(URL)
+        commandArray = commandMap['open-url']
+        commandArray.append([pyautogui.typewrite, [URL]])
+        commandArray.append([pyautogui.press, ['enter']])
+        commandMap['open-url'] = commandArray
+        start = time.time()
+
+    while True:
+        (ret, currentFrame) = recordOnce(hands)
+        updateGUI(root, panel, currentFrame)
+        difference = time.time() - start
+        if difference >= 5:
+            break
+        
+        number = math.ceil(5 - difference)
+        btn.config(text=f'Capturing start sign in {number} seconds...')
+
+    start = time.time()
+
+    (normalizedList, currentFrame) = recordOnce(hands)
+    updateGUI(root, panel, currentFrame)
+
     startPos = {
         'x': normalizedList[0].x,
         'y': normalizedList[0].y,
@@ -98,12 +164,21 @@ def learnCommand(commandName):
     print(f"startPos is")
     print(startPos)
 
-    while time.time() - start < 5:
-        pass
+    while True:
+        (ret, currentFrame) = recordOnce(hands)
+        updateGUI(root, panel, currentFrame)
+        difference = time.time() - start
+        if difference >= 5:
+            break
+        
+        number = math.ceil(5 - difference)
+        btn.config(text=f'Capturing end sign in {number} seconds...')
+    
+    btn.config(text="Snapshot!")
 
-    normalizedList = recordOnce()
+    (normalizedList, currentFrame) = recordOnce(hands)
+    updateGUI(root, panel, currentFrame)
 
-    tempCommand['combo']['endingSign'] = parseNormalizedList(normalizedList)
     endPos = {
         'x': normalizedList[0].x,
         'y': normalizedList[0].y,
@@ -114,6 +189,7 @@ def learnCommand(commandName):
         'y': endPos.get('y') - startPos.get('y'),
         'z': endPos.get('z') - startPos.get('z')
     } 
+    tempCommand['combo']['endingSign'] = parseNormalizedList(normalizedList)
     tempCommand['combo']['difference'] = difference
 
     savedCommands[commandName] = {
@@ -135,24 +211,71 @@ def learnCommand(commandName):
     print(endPos)
     print("difference is")
     print(savedCommands.get(commandName).get('combo').get('difference'))
+    print("Command is")
+    print(savedCommands[commandName])
 
 def performActions(actions):
     for action in actions:
         fn = action[0]
         fn(*(action[1]))
 
+def textSpeechActivation():
+    threading.Thread(target = text_to_speech.main).start()
+
 def main(root):
     # Frontend GUI
     panel = ttk.Label(root)  # initialize image panel
     panel.pack(padx=10, pady=10)
-    btn = ttk.Button(root, text="Snapshot!")
+    btn = ttk.Label(root, text="Looking for a sign...")
     btn.pack(fill="both", expand=True, padx=10, pady=10)
-    text_to_speech_btn = ttk.Button(root, text="Start Talking", command=text_to_speech.main)
-    text_to_speech_btn.pack(fill="both", expand=True, padx=10, pady=10)
-    # ttk.Button(frontend, text="Start", command=yes).grid(column = 1, row = 1)
-    # ttk.Button(frontend, text="Add", command=yes).grid(column = 2, row = 1)
-    # ttk.Button(frontend, text="Cancel", command=yes).grid(column = 3, row = 1)
-    # ttk.Button(frontend, text="Quit", command=yes).grid(column = 4, row = 1)
+
+    learnFrame = LabelFrame(root, text="Learn", padx=5, pady=5)
+    learnFrame.pack(side=LEFT, padx=10, pady=10)
+    global isLearning
+
+    # def learnRightClickButtonFn():
+    #     global isLearning
+    #     global learnCommandName
+    #     learnCommandName = 'right-click'
+    #     isLearning = True
+    
+    # def learnScrollButtonFn():
+    #     global isLearning
+    #     global learnCommandName
+    #     learnCommandName = 'scroll'
+    #     isLearning = True
+
+    options = [
+        'click',
+        'click',
+        'right-click',
+        'scroll',
+        'open-url',
+        'open-browser'
+    ]
+
+    clicked = StringVar()
+
+    clicked.set('click')
+
+    drop = ttk.OptionMenu(learnFrame, clicked, *options).grid(row=0, column=0)
+
+    def learnButtonFn():
+        global isLearning
+        global learnCommandName
+        learnCommandName = clicked.get()
+        isLearning = True
+        
+    learnClickButton = Button(learnFrame, text="Learn!", command=learnButtonFn).grid(row=0, column=1)
+
+    # learnRightClickButton = Button(learnFrame, text="Right-Click", command=learnRightClickButtonFn).grid(row=0, column=1)
+
+    # learnScrollButton = Button(learnFrame, text="Scroll", command=learnScrollButtonFn).grid(row=0, column=2)
+
+    # on button click, treeview will call learnCommand(commandName, root, btn), where commandName is the name of the 
+    # corresponding row, e.g. learnCommand('click', root, btn)
+    # text_to_speech_btn = ttk.Button(root, text="Start Talking", command=text_to_speech.main)
+    # text_to_speech_btn.pack(fill="both", expand=True, padx=10, pady=10)
 
     # Flags to help matching    
     global savedCommands
@@ -164,22 +287,40 @@ def main(root):
     timerStart = time.time()
 
     with handsModule.Hands(static_image_mode=False, min_detection_confidence=0.7, min_tracking_confidence=0.7, max_num_hands=2) as hands:
+
         currentFrame = []
         while True:
+            if isLearning:
+                timerStart = time.time()
+                matchingMode = 0
+                learnCommand(learnCommandName, btn, hands, root, panel)
+                isLearning = False
+                continue
+
             if matchingMode == 0:
                 (normalizedList, currentFrame) = recordOnce(hands)
+                if len(normalizedList) == 0:
+                    updateGUI(root, panel, currentFrame)
+                    continue
+                startPos = {
+                    'x': normalizedList[0].x,
+                    'y': normalizedList[0].y,
+                    'z': normalizedList[0].z,
+                }
                 parsedList = parseNormalizedList(normalizedList)
                 potentialMatches = edwin.matchInitSign(parsedList, savedCommands)
                 if len(potentialMatches) != 0:
-                    startPos = {
-                        'x': normalizedList[0].x,
-                        'y': normalizedList[0].y,
-                        'z': normalizedList[0].z,
-                    }
                     matchingMode = 1
                     timerStart = time.time()
                     print("Found potential matches")
+                    btn.config(text="Please move your hand.")
             elif matchingMode == 1 and time.time() - timerStart >= 2:
+                if len(normalizedList) == 0:
+                    updateGUI(root, panel, currentFrame)
+                    matchingMode = 2
+                    timerStart = time.time()
+                    btn.config(text="No sign found :(")
+                    continue
                 (normalizedList, currentFrame) = recordOnce(hands)
                 endPos = {
                     'x': normalizedList[0].x,
@@ -191,31 +332,33 @@ def main(root):
                 actions = edwin.matchFinalSign(parsedList, startPos, endPos, potentialMatches, savedCommands)
                 print(actions)
                 print("Actions received")
+                btn.config(text="Performing action...")
+                performActions(actions)
                 matchingMode = 2
                 timerStart = time.time()
+                btn.config(text="Please give us a sign.")
+            elif matchingMode == 1:
+                (normalizedList, currentFrame) = recordOnce(hands)
             elif matchingMode == 2 and time.time() - timerStart >= 3:
                 matchingMode = 0
                 currentFrame = displayFrame()
+                btn.config(text="Looking for a sign...")
             else:
                 currentFrame = displayFrame()
                 
             # Below shows the current frame to the desktop
             # currentImage = cv2.cvtColor(currentFrame, cv2.COLOR_BGR2BGRA)
-            img = Image.fromarray(currentFrame)
-            imgtk = ImageTk.PhotoImage(image = img)
-            panel.imgtk = imgtk
-            panel.config(image = imgtk)
-            root.update()
+            updateGUI(root, panel, currentFrame)
             key = cv2.waitKey(1) & 0xFF
 
             # Below states that if the |q| is press on the keyboard it will stop the system
 
             if key == ord('q'):
                 break
-        
+
 if __name__ == "__main__":
     root = Tk()
     root.title("Tony Stark")
-    text_to_speech_btn = ttk.Button(root, text="Start Talking", command="")
+    textSpeechActivation()
     main(root)
     root.mainloop()

@@ -31,6 +31,7 @@ Example usage:
 import re
 import sys
 import time
+from unittest import result
 import pyautogui
 
 from google.cloud import speech
@@ -45,6 +46,8 @@ CHUNK_SIZE = int(SAMPLE_RATE / 10)  # 100ms
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
 YELLOW = "\033[0;33m"
+
+url_detector_result = ''
 
 
 def get_current_time():
@@ -232,7 +235,10 @@ def listen_print_loop(responses, stream):
                 sys.stdout.write("enter key pressed")
                 pyautogui.press('enter')
             else:
-                pyautogui.write(transcript)   
+                pyautogui.write(transcript)
+                result = transcript.split(' ')
+                if len(result) >= 2 and result[-2] == 'open':
+                    setURL(result[-1])
             #------------------writing to os--------------
             stream.is_final_end_time = stream.result_end_time
             stream.last_transcript_was_final = True
@@ -244,7 +250,6 @@ def listen_print_loop(responses, stream):
                 sys.stdout.write("Exiting...\n")
                 stream.closed = True
                 break
-
         else:
             sys.stdout.write(RED)
             sys.stdout.write("\033[K")
@@ -252,6 +257,15 @@ def listen_print_loop(responses, stream):
 
             stream.last_transcript_was_final = False
 
+def getURL():
+    global url_detector_result
+    print("In Google Cloud")
+    print(url_detector_result)
+    return url_detector_result
+
+def setURL(result):
+    global url_detector_result
+    url_detector_result = result
 
 def main():
     """start bidirectional streaming from microphone input to speech API"""

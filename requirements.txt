@@ -1,3 +1,9 @@
+opencv-python
+mediapipe
+gTTS
+PyAutoGUI
+dlib
+scipy
 absl-py==1.0.0
 asgiref==3.5.0
 astunparse==1.6.3
