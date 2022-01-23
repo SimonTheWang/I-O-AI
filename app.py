@@ -46,6 +46,7 @@ def displayFrame(frameArg=None):
     run(frame1)
     cv2.imshow('Frame', frame1)
     key = cv2.waitKey(1) & 0xFF
+    return frame1
 
 def recordOnce(hands):
     ret, frame = cap.read()
@@ -71,10 +72,9 @@ def recordOnce(hands):
                 normalizedList.append(normalizedLandmark)
     
     #Below shows the current frame to the desktop 
-    cv2.imshow("Frame", frame1);
     print(normalizedList)
-    cv2.waitKey(1)
-    return normalizedList
+    # cv2.waitKey(1)
+    return (normalizedList, frame1)
 
 def learnCommand(commandName):
     global savedCommands
@@ -146,10 +146,10 @@ def performActions(actions):
 
 def main(root):
     # Frontend GUI
-    # frontend = ttk.Canvas(root, 800, 800)
-    # frontend.grid(row = 0, column = 0)
-
-    # ttk.Label(frontend, text="Welcome to Tony Stark Simulator").grid(column = 0, row = 0)
+    panel = ttk.Label(root)  # initialize image panel
+    panel.pack(padx=10, pady=10)
+    btn = ttk.Button(root, text="Snapshot!")
+    btn.pack(fill="both", expand=True, padx=10, pady=10)
 
     # ttk.Button(frontend, text="Start", command=yes).grid(column = 1, row = 1)
     # ttk.Button(frontend, text="Add", command=yes).grid(column = 2, row = 1)
@@ -166,10 +166,10 @@ def main(root):
     timerStart = time.time()
 
     with handsModule.Hands(static_image_mode=False, min_detection_confidence=0.7, min_tracking_confidence=0.7, max_num_hands=2) as hands:
-
+        currentFrame = []
         while True:
             if matchingMode == 0:
-                normalizedList = recordOnce(hands)
+                (normalizedList, currentFrame) = recordOnce(hands)
                 parsedList = parseNormalizedList(normalizedList)
                 potentialMatches = edwin.matchInitSign(parsedList, savedCommands)
                 if len(potentialMatches) != 0:
@@ -182,7 +182,7 @@ def main(root):
                     timerStart = time.time()
                     print("Found potential matches")
             elif matchingMode == 1 and time.time() - timerStart >= 2:
-                normalizedList = recordOnce(hands)
+                (normalizedList, currentFrame) = recordOnce(hands)
                 endPos = {
                     'x': normalizedList[0].x,
                     'y': normalizedList[0].y,
@@ -197,25 +197,26 @@ def main(root):
                 timerStart = time.time()
             elif matchingMode == 2 and time.time() - timerStart >= 3:
                 matchingMode = 0
-                displayFrame()
+                currentFrame = displayFrame()
             else:
-                displayFrame()
+                currentFrame = displayFrame()
                 
-        #     # Below shows the current frame to the desktop
+            # Below shows the current frame to the desktop
+            # currentImage = cv2.cvtColor(currentFrame, cv2.COLOR_BGR2BGRA)
+            img = Image.fromarray(currentFrame)
+            imgtk = ImageTk.PhotoImage(image = img)
+            panel.imgtk = imgtk
+            panel.config(image = imgtk)
+            root.update()
+            key = cv2.waitKey(1) & 0xFF
 
-        #     # TODO Remove
-        #     # cv2.imshow('Frame', frame)
-        #     # img = Image.fromarray(frame1)
-        #     # imgtk = ImageTk.PhotoImage(image = img)
-        #     # frontend.create_image(0, 0, anchor=ttk.NW, image=imgtk)
-        #     # key = cv2.waitKey(1) & 0xFF
+            # Below states that if the |q| is press on the keyboard it will stop the system
 
-        #     # Below states that if the |q| is press on the keyboard it will stop the system
-
-        #     if key == ord('q'):
-        #         break
+            if key == ord('q'):
+                break
         
 if __name__ == "__main__":
     root = Tk()
+    root.title("Tony Stark")
     main(root)
     root.mainloop()
