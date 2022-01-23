@@ -5,7 +5,7 @@ Instead of a mouse, Tony Stark Simulator, or TSS, uses a user's webcam to move t
 TSS also allows users to input data using their voice, so they don't need to use a keyboard.
 ## Getting started
 1. clone the repository
-2. ```cd ``` to the root of the folder
+2. ```cd ```to the root of the folder
 3. run  ```pip install -r requirements.txt``` in the terminal
 4. run ```app.py``` in the terminal
 5. Done !
