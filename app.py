@@ -7,8 +7,6 @@ import pyautogui
 from PIL import Image, ImageTk
 from point_detection import *
 import time
-# from threading import TI
-# Import the necessary Packages for this software to run
 
 from distutils import command
 from lib2to3.pytree import convert
@@ -17,8 +15,6 @@ import mediapipe
 import cv2
 import edwin
 import pyautogui
-
-# Use MediaPipe to draw the hand framework over the top of hands it identifies in Real-Time
 
 drawingModule = mediapipe.solutions.drawing_utils
 handsModule = mediapipe.solutions.hands
@@ -40,25 +36,45 @@ def parseNormalizedList(normalizedList):
         point.y -= normalizedList[0].y
         point.z -= normalizedList[0].z
     return normalizedList
-    
-def recordOnce(hands):
-    global cap
 
+def displayFrame(frameArg=None):
+    global cap
     (ret, frame) = cap.read()
+    if frameArg:
+        frame = frameArg
     frame1 = cv2.resize(frame, (640, 480))
     run(frame1)
+    cv2.imshow('Frame', frame1)
+    key = cv2.waitKey(1) & 0xFF
+
+def recordOnce(hands):
+    ret, frame = cap.read()
+    #Unedit the below line if your live feed is produced upsidedown
+    #flipped = cv2.flip(frame, flipCode = -1)
+    
+    #Determines the frame size, 640 x 480 offers a nice balance between speed and accurate identification
+    frame1 = cv2.resize(frame, (640, 480))
+    run(frame1)
+    
+    #produces the hand framework overlay ontop of the hand, you can choose the colour here too)
     results = hands.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
-    cv2.imshow("Frame", frame1)
+
+    normalizedList = []
+    
+    #Incase the system sees multiple hands this if statment deals with that and produces another hand overlay
     if results.multi_hand_landmarks != None:
         for handLandmarks in results.multi_hand_landmarks:
             drawingModule.draw_landmarks(frame1, handLandmarks, handsModule.HAND_CONNECTIONS)
-            normalizedList = []
 
             for point in handsModule.HandLandmark:
                 normalizedLandmark = handLandmarks.landmark[point]
                 normalizedList.append(normalizedLandmark)
-            
-            return normalizedList
+    
+    #Below shows the current frame to the desktop 
+    cv2.imshow("Frame", frame1);
+    print(normalizedList)
+    cv2.waitKey(1)
+    return normalizedList
 
 def learnCommand(commandName):
     global savedCommands
@@ -123,6 +139,10 @@ def learnCommand(commandName):
     print("difference is")
     print(savedCommands.get(commandName).get('combo').get('difference'))
 
+def performActions(actions):
+    for action in actions:
+        fn = action[0]
+        fn(*(action[1]))
 
 def main(root):
     # Frontend GUI
@@ -136,61 +156,64 @@ def main(root):
     # ttk.Button(frontend, text="Cancel", command=yes).grid(column = 3, row = 1)
     # ttk.Button(frontend, text="Quit", command=yes).grid(column = 4, row = 1)
 
-    # Flags to help matching
+    # Flags to help matching    
     global savedCommands
-    isMatching = False
+    matchingMode = 0
 
     # Dictionary of x, y, z for the wrist
     startPos = {} 
     potentialMatches = []
     timerStart = time.time()
 
-    with handsModule.Hands(static_image_mode=False, min_detection_confidence=0.7, min_tracking_confidence=0.7, max_num_hands=2) as \
-        hands:   
+    with handsModule.Hands(static_image_mode=False, min_detection_confidence=0.7, min_tracking_confidence=0.7, max_num_hands=2) as hands:
 
         while True:
-            recordOnce(hands)
-            time.sleep(1)
+            if matchingMode == 0:
+                normalizedList = recordOnce(hands)
+                parsedList = parseNormalizedList(normalizedList)
+                potentialMatches = edwin.matchInitSign(parsedList, savedCommands)
+                if len(potentialMatches) != 0:
+                    startPos = {
+                        'x': normalizedList[0].x,
+                        'y': normalizedList[0].y,
+                        'z': normalizedList[0].z,
+                    }
+                    matchingMode = 1
+                    timerStart = time.time()
+                    print("Found potential matches")
+            elif matchingMode == 1 and time.time() - timerStart >= 2:
+                normalizedList = recordOnce(hands)
+                endPos = {
+                    'x': normalizedList[0].x,
+                    'y': normalizedList[0].y,
+                    'z': normalizedList[0].z,
+                }
+                parsedList = parseNormalizedList(normalizedList)
+                
+                actions = edwin.matchFinalSign(parsedList, startPos, endPos, potentialMatches, savedCommands)
+                print(actions)
+                print("Actions received")
+                matchingMode = 2
+                timerStart = time.time()
+            elif matchingMode == 2 and time.time() - timerStart >= 3:
+                matchingMode = 0
+                displayFrame()
+            else:
+                displayFrame()
+                
+        #     # Below shows the current frame to the desktop
 
-            # if isMatching and time.time() - timerStart < 5:
-            #     continue
+        #     # TODO Remove
+        #     # cv2.imshow('Frame', frame)
+        #     # img = Image.fromarray(frame1)
+        #     # imgtk = ImageTk.PhotoImage(image = img)
+        #     # frontend.create_image(0, 0, anchor=ttk.NW, image=imgtk)
+        #     # key = cv2.waitKey(1) & 0xFF
 
-            # normalizedList = recordOnce()
-            # wrist = {
-            #     'x': normalizedList[0].x,
-            #     'y': normalizedList[0].y,
-            #     'z': normalizedList[0].z
-            # }
-            # parsedList = parseNormalizedList(normalizedList)
+        #     # Below states that if the |q| is press on the keyboard it will stop the system
 
-            # if not isMatching:
-            #     potentialMatches = edwin.matchInitSign(parsedList, savedCommands)
-            #     if len(potentialMatches) != 0:
-            #         startPos = wrist
-            #         isMatching = True
-            #         timerStart = time.time()
-            #         print("Found potential matches")
-            # else:
-            #     endPos = wrist
-            #     actions = edwin.matchFinalSign(parsedList, startPos, endPos, potentialMatches, savedCommands)
-            #     print(actions)
-            #     print("Actions received")
-            #     isMatching = False
-
-                    
-            #     # Below shows the current frame to the desktop
-
-            #     # TODO Remove
-            #     # cv2.imshow('Frame', frame)
-            #     # img = Image.fromarray(frame1)
-            #     # imgtk = ImageTk.PhotoImage(image = img)
-            #     # frontend.create_image(0, 0, anchor=ttk.NW, image=imgtk)
-            #     # key = cv2.waitKey(1) & 0xFF
-
-            #     # Below states that if the |q| is press on the keyboard it will stop the system
-
-            #     if key == ord('q'):
-            #         break
+        #     if key == ord('q'):
+        #         break
         
 if __name__ == "__main__":
     root = Tk()
