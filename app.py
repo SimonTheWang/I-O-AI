@@ -108,6 +108,13 @@ def recordOnce(hands):
     
     #Below shows the current frame to the desktop 
     # cv2.waitKey(1)
+    if len(normalizedList) > 0:
+        wrist =  {
+            'x': normalizedList[0].x,
+            'y': normalizedList[0].y,
+            'z': normalizedList[0].z,
+        }
+        run(frame1, wrist)
     return (normalizedList, frame1)
 
 def learnCommand(commandName, btn, hands, root, panel):
