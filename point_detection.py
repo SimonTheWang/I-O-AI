@@ -2,12 +2,14 @@ import cv2
 import dlib
 import numpy as np
 import pyautogui
+import time
 
 fname = './models/shape_predictor_68_face_landmarks_GTX.dat'
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(fname)
-previous = None
-
+previous_nose = None
+previous_mouse = None
+og_nose = None
 
 def shape_to_np(shape, dtype="int"):
     coords = np.zeros((68, 2), dtype = dtype)
@@ -15,34 +17,60 @@ def shape_to_np(shape, dtype="int"):
         coords[i] = (shape.part(i).x, shape.part(i).y)
     return coords
 
-def run(frame):
+def measureHead(frame):
     global fname
     global detector
     global predictor
-    global previous
-
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     rects = detector(gray, 1)
     for rect in rects:
         shape = predictor(gray, rect)
         shape = shape_to_np(shape)
-
         for (x, y) in shape:
             cv2.circle(frame, (x, y), 2, (0, 0, 255), -1)
         nose = (shape[30][0], shape[30][1])
-        topLeft = (shape[39][0], shape[29][1] + 7)
-        topRight = (shape[42][0], 0)
-        bottom = (0, shape[33][1] - 10)
+        return nose
+    return None
 
-        scaled_x = pyautogui.size()[0] / ((topRight[0] - topLeft[0]) * (nose[0] - topLeft[0]))
-        scaled_y = pyautogui.size()[1] / ((bottom[1] - topLeft[1]) * (nose[1] - topLeft[1]))
+def getDiffIndex():
+    return
 
-        if (previous == None):
-            previous = nose
-        cv2.rectangle(frame, (topLeft[0], topLeft[1]), (topRight[0], bottom[1]), (255, 0, 0), 1)
+def run(frame):
+    global og_nose
+    pyautogui.FAILSAFE = False
+    (maxScreenX, maxScreenY) = pyautogui.size()
+    (oldMouseX, oldMouseY) = pyautogui.position()
+    oldMouseX = maxScreenX - oldMouseX
+    baseMoveX = maxScreenX/400
+    baseMoveY = maxScreenY/300
 
-        if (pyautogui.size()[0] - scaled_x > 0 and pyautogui.size()[0] - scaled_x < pyautogui.size()[0]) and (scaled_y > 0 and scaled_y <= pyautogui.size()[1]):
-            if abs(previous[0] - nose[0]) > 2 or abs(previous[1] - nose[1]) > 2:
-                # print(str(pyautogui.size()[0] - scaled_x) + " " + str(scaled_y))
-                pyautogui.moveTo(int(pyautogui.size()[0] - scaled_x), int(scaled_y))
-                previous = nose
+    positionDiff = [0,0] #(x,y)
+    # calcultate change in nose position stored in diffIndex
+    nose = measureHead(frame)
+    if og_nose is None:
+        og_nose = nose
+    if nose is None:
+        print('no nose found')
+    else:
+        positionDiff[0] = nose[0] - og_nose[0]
+        positionDiff[1] = nose[1] - og_nose[1] 
+
+        (newXCoord, newYCoord) = (oldMouseX, oldMouseY) 
+
+        if abs(positionDiff[0]) > 10:
+            print('xOffset: ', positionDiff[0] * baseMoveX)
+            newXCoord = positionDiff[0] * baseMoveX + oldMouseX
+            if newXCoord >= maxScreenX: 
+                newXCoord = maxScreenX-1
+            elif newXCoord <= 0:
+                newXCoord = 1
+        if abs(positionDiff[1]) > 10:
+            print('yOffset: ', positionDiff[1] * baseMoveY)
+            newYCoord = positionDiff[1] * baseMoveY + oldMouseY
+            if newYCoord >= maxScreenY: 
+                newYCoord = maxScreenY-1
+            elif newYCoord <= 0:
+                newYCoord = 1
+            
+        pyautogui.moveTo(maxScreenX-int(newXCoord), int(newYCoord))
+        # time.sleep(.1)

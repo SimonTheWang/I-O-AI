@@ -69,7 +69,6 @@ def recordOnce(hands):
                 normalizedList.append(normalizedLandmark)
     
     #Below shows the current frame to the desktop 
-    print(normalizedList)
     # cv2.waitKey(1)
     return (normalizedList, frame1)
 
@@ -142,6 +141,8 @@ def performActions(actions):
         fn(*(action[1]))
 
 def main(root):
+    pyautogui.moveTo(pyautogui.size()[0]/2, pyautogui.size()[1]/2)
+
     # Frontend GUI
     panel = ttk.Label(root)  # initialize image panel
     panel.pack(padx=10, pady=10)
