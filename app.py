@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
 import cv2
 import dlib
 import numpy as np
@@ -7,6 +8,7 @@ import pyautogui
 from PIL import Image, ImageTk
 from point_detection import *
 import time
+import math
 
 from distutils import command
 from lib2to3.pytree import convert
@@ -29,6 +31,7 @@ cap = cv2.VideoCapture(0)
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 savedCommands = {}
+isLearning = False
     
 def parseNormalizedList(normalizedList):
     for point in reversed(normalizedList):
@@ -72,12 +75,15 @@ def recordOnce(hands):
                 normalizedList.append(normalizedLandmark)
     
     #Below shows the current frame to the desktop 
-    print(normalizedList)
+    # print(normalizedList)
     # cv2.waitKey(1)
     return (normalizedList, frame1)
 
-def learnCommand(commandName):
+def learnCommand(commandName, root, btn):
     global savedCommands
+    global isLearning
+    isLearning = True
+
     commandMap = {
         'click': [[pyautogui.click, []]],
         'scroll': [[pyautogui.press, ['pdgn']]],
@@ -86,6 +92,16 @@ def learnCommand(commandName):
 
     start = time.time()
     tempCommand = {}
+
+    while True:
+        difference = time.time() - start
+        if difference >= 3:
+            break
+        
+        number = math.ceil(3 - difference)
+        btn.config(text=f'Starting in {number} seconds...')
+
+    start = time.time()
 
     normalizedList = recordOnce()
     startPos = {
@@ -101,8 +117,13 @@ def learnCommand(commandName):
     print(f"startPos is")
     print(startPos)
 
-    while time.time() - start < 5:
-        pass
+    while True:
+        difference = time.time() - start
+        if difference >= 5:
+            break
+        
+        number = math.ceil(5 - difference)
+        btn.config(text=f'Starting in {number} seconds...')
 
     normalizedList = recordOnce()
 
@@ -138,6 +159,7 @@ def learnCommand(commandName):
     print(endPos)
     print("difference is")
     print(savedCommands.get(commandName).get('combo').get('difference'))
+    isLearning = False
 
 def performActions(actions):
     for action in actions:
@@ -151,10 +173,22 @@ def main(root):
     btn = ttk.Button(root, text="Snapshot!")
     btn.pack(fill="both", expand=True, padx=10, pady=10)
 
-    # ttk.Button(frontend, text="Start", command=yes).grid(column = 1, row = 1)
-    # ttk.Button(frontend, text="Add", command=yes).grid(column = 2, row = 1)
-    # ttk.Button(frontend, text="Cancel", command=yes).grid(column = 3, row = 1)
-    # ttk.Button(frontend, text="Quit", command=yes).grid(column = 4, row = 1)
+    frame = LabelFrame(root, text="Learn Frame", padx=5, pady=5)
+    frame.pack(padx=10, pady=10)
+
+    tree = ttk.Treeview(root)
+    tree.grid()
+    
+    # Tree View
+    tree.insert('', 1, text='Click')
+    tree.insert('', 2, text='Minimize')
+    tree.insert('',  text='Expand')
+
+    b = Button(frame, text="XD")
+    b.grid(row=0, column=0)
+
+    # on button click, treeview will call learnCommand(commandName, root, btn), where commandName is the name of the 
+    # corresponding row, e.g. learnCommand('click', root, btn)
 
     # Flags to help matching    
     global savedCommands
@@ -168,6 +202,11 @@ def main(root):
     with handsModule.Hands(static_image_mode=False, min_detection_confidence=0.7, min_tracking_confidence=0.7, max_num_hands=2) as hands:
         currentFrame = []
         while True:
+            if isLearning:
+                timerStart = time.time()
+                matchingMode = 0
+                continue
+
             if matchingMode == 0:
                 (normalizedList, currentFrame) = recordOnce(hands)
                 parsedList = parseNormalizedList(normalizedList)
