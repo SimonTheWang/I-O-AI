@@ -15,6 +15,10 @@ import edwin
 import pyautogui
 
 import threading
+import os
+from pymouse import PyMouse
+
+mouse = PyMouse()
 
 drawingModule = mediapipe.solutions.drawing_utils
 handsModule = mediapipe.solutions.hands
@@ -29,10 +33,12 @@ cap = cv2.VideoCapture(0)
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 savedCommands = {}
+
 isLearning = False
 learnCommandName = ""
 
 pyautogui.PAUSE = 1
+resolution = pyautogui.size()
     
 def updateGUI(root, panel, frame):
     img = Image.fromarray(frame)
@@ -55,6 +61,7 @@ def displayFrame(frameArg=None):
     if frameArg:
         frame = frameArg
     frame1 = cv2.resize(frame, (640, 480))
+    # frame1 = cv2.resize(frame, (1280, 720))
     # run(frame1)
 
     key = cv2.waitKey(1) & 0xFF
@@ -66,8 +73,9 @@ def recordOnce(hands):
     #flipped = cv2.flip(frame, flipCode = -1)
     
     #Determines the frame size, 640 x 480 offers a nice balance between speed and accurate identification
+    # frame1 = cv2.resize(frame, (1280, 720))
     frame1 = cv2.resize(frame, (640, 480))
-    # run(frame1)
+    #  when you have to tell them know they have to be late show the(frame1)
     
     #produces the hand framework overlay ontop of the hand, you can choose the colour here too)
     results = hands.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
@@ -85,6 +93,15 @@ def recordOnce(hands):
     
     #Below shows the current frame to the desktop 
     # cv2.waitKey(1)
+    if len(normalizedList) > 0:
+        wrist =  {
+            'x': normalizedList[8].x,
+            'y': normalizedList[8].y,
+            'z': normalizedList[8].z,
+        }
+        # run(frame1, wrist)
+        hand = (wrist['x'] * resolution[0], wrist['y'] * resolution[1])
+        mouse.move(int(resolution[0]-hand[0]), int(hand[1]))
     return (normalizedList, frame1)
 
 def learnCommand(commandName, btn, hands, root, panel):
@@ -96,10 +113,8 @@ def learnCommand(commandName, btn, hands, root, panel):
     commandMap = {
         'click': [[pyautogui.click, []]],
         'scroll': [[pyautogui.press, ['pdgn']]],
-        'right-click': [[pyautogui.click, ['right']]],
         'open-app': [
             [pyautogui.press, ['win']],
-            [pyautogui.typewrite, ['chrome']]
         ],
         'open-browser': [
             [pyautogui.press, ['win']],
@@ -111,6 +126,9 @@ def learnCommand(commandName, btn, hands, root, panel):
             [pyautogui.typewrite, ['chrome']],
             [pyautogui.press, ['enter']],
             [pyautogui.hotkey, ['ctrl', 'l']],
+        ],
+        'open-game': [
+            [os.system, ['"D:\\Desktop\\Geometry.Dash.v2.1\\GeometryDash.exe"']],
         ]
     }
 
@@ -195,7 +213,7 @@ def learnCommand(commandName, btn, hands, root, panel):
         if URL == '':
             while True:
                 difference = time.time() - start
-                if difference >= 5:
+                if difference >= 3:
                     break
                 
                 number = math.ceil(3 - difference)
@@ -259,28 +277,15 @@ def main(root):
     learnFrame.pack(side=LEFT, padx=10, pady=10)
     global isLearning
 
-    # def learnRightClickButtonFn():
-    #     global isLearning
-    #     global learnCommandName
-    #     learnCommandName = 'right-click'
-    #     isLearning = True
-    
-    # def learnScrollButtonFn():
-    #     global isLearning
-    #     global learnCommandName
-    #     learnCommandName = 'scroll'
-    #     isLearning = True
-
     options = [
         'click',
         'click',
         'open-app',
         'open-browser',
         'open-url',
-        'right-click',
-        'scroll',
+        'scroll'
     ]
-
+    
     clicked = StringVar()
 
     clicked.set('click')
@@ -294,15 +299,6 @@ def main(root):
         isLearning = True
         
     learnClickButton = Button(learnFrame, text="Learn!", command=learnButtonFn).grid(row=0, column=1)
-
-    # learnRightClickButton = Button(learnFrame, text="Right-Click", command=learnRightClickButtonFn).grid(row=0, column=1)
-
-    # learnScrollButton = Button(learnFrame, text="Scroll", command=learnScrollButtonFn).grid(row=0, column=2)
-
-    # on button click, treeview will call learnCommand(commandName, root, btn), where commandName is the name of the 
-    # corresponding row, e.g. learnCommand('click', root, btn)
-    # text_to_speech_btn = ttk.Button(root, text="Start Talking", command=text_to_speech.main)
-    # text_to_speech_btn.pack(fill="both", expand=True, padx=10, pady=10)
 
     # Flags to help matching    
     global savedCommands
@@ -326,6 +322,7 @@ def main(root):
 
             if matchingMode == 0:
                 (normalizedList, currentFrame) = recordOnce(hands)
+                timerStart = time.time()
                 if len(normalizedList) == 0:
                     updateGUI(root, panel, currentFrame)
                     continue
@@ -341,7 +338,7 @@ def main(root):
                     timerStart = time.time()
                     print("Found potential matches")
                     btn.config(text="Please move your hand.")
-            elif matchingMode == 1 and time.time() - timerStart >= 2:
+            elif matchingMode == 1 and time.time() - timerStart >= 1:
                 if len(normalizedList) == 0:
                     updateGUI(root, panel, currentFrame)
                     matchingMode = 2
@@ -364,6 +361,7 @@ def main(root):
                 matchingMode = 2
                 timerStart = time.time()
                 btn.config(text="Please give us a sign.")
+                updateGUI(root, panel, currentFrame)
             elif matchingMode == 1:
                 (normalizedList, currentFrame) = recordOnce(hands)
             elif matchingMode == 2 and time.time() - timerStart >= 3:

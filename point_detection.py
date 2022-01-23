@@ -32,21 +32,22 @@ def measureHead(frame):
         return nose
     return None
 
-def getDiffIndex():
-    return
-
-def run(frame):
+def run(frame, hand):
     global og_nose
     pyautogui.FAILSAFE = False
     (maxScreenX, maxScreenY) = pyautogui.size()
     (oldMouseX, oldMouseY) = pyautogui.position()
     oldMouseX = maxScreenX - oldMouseX
-    baseMoveX = maxScreenX/400
-    baseMoveY = maxScreenY/300
+    baseMoveX = maxScreenX/maxScreenX
+    baseMoveY = maxScreenY/maxScreenY
 
     positionDiff = [0,0] #(x,y)
     # calcultate change in nose position stored in diffIndex
-    nose = measureHead(frame)
+    
+    nose = (hand['x']*maxScreenX,hand['y']*maxScreenY)
+    print(nose)
+    # nose = measureHead(frame)
+
     if og_nose is None:
         og_nose = nose
     if nose is None:
@@ -72,5 +73,6 @@ def run(frame):
             elif newYCoord <= 0:
                 newYCoord = 1
             
-        pyautogui.moveTo(maxScreenX-int(newXCoord), int(newYCoord))
-        time.sleep(.1)
+        pyautogui.moveTo(maxScreenX-nose[0], nose[1])
+        # pyautogui.moveTo(maxScreenX-int(newXCoord), int(newYCoord))
+        # time.sleep(.1)
