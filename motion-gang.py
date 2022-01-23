@@ -184,7 +184,6 @@ def performAction(gestureNumber):
             [pyautogui.press, ['enter']],
             [pyautogui.hotkey, ['ctrl', 'shift', 'n']],
             [pyautogui.hotkey, ['ctrl', 'l']],
-            [pyautogui.typewrite, ['pornhub.com']],
             [pyautogui.press, ['enter']],
         ], 
         2: [

@@ -2,15 +2,12 @@ from tkinter import *
 from tkinter import ttk
 import cv2
 import dlib
-import numpy as np
 import pyautogui
 from PIL import Image, ImageTk
 from point_detection import *
+import google_cloud_speech_to_text as text_to_speech
 import time
 
-from distutils import command
-from lib2to3.pytree import convert
-from socket import getservbyname
 import mediapipe
 import cv2
 import edwin
@@ -150,7 +147,8 @@ def main(root):
     panel.pack(padx=10, pady=10)
     btn = ttk.Button(root, text="Snapshot!")
     btn.pack(fill="both", expand=True, padx=10, pady=10)
-
+    text_to_speech_btn = ttk.Button(root, text="Start Talking", command=text_to_speech.main)
+    text_to_speech_btn.pack(fill="both", expand=True, padx=10, pady=10)
     # ttk.Button(frontend, text="Start", command=yes).grid(column = 1, row = 1)
     # ttk.Button(frontend, text="Add", command=yes).grid(column = 2, row = 1)
     # ttk.Button(frontend, text="Cancel", command=yes).grid(column = 3, row = 1)
@@ -218,5 +216,6 @@ def main(root):
 if __name__ == "__main__":
     root = Tk()
     root.title("Tony Stark")
+    text_to_speech_btn = ttk.Button(root, text="Start Talking", command="")
     main(root)
     root.mainloop()
