@@ -5,6 +5,7 @@ def matchSign(inputSign, savedSign):
     differenceMetrics = []
     
     i = 0
+    wrongCount = 0
     # Loop through landmarks of savedSign
     for landmark in savedSign:
         x = abs(landmark.x - inputSign[i].x)
@@ -14,8 +15,14 @@ def matchSign(inputSign, savedSign):
         # Reject if over threshold
         if x+y+z >= 0.1:
             # gesture rejected
+            if wrongCount >= 2:
+                # gesture rejected
+                return False
+            else:
+                wrongCount+=1
             return False
-        
+
+
         i += 1
     return True
 
@@ -51,7 +58,7 @@ def matchFinalSign(inputSign, initWrist, finalWrist, matchList, commands):
             actions = command.get('actions')
             if matchSign(inputSign, combo.get('endingSign')):
                 posDiff = getPosThreshold(initWrist, finalWrist, combo.get('difference'))
-                if posDiff <= 0.2:
+                if posDiff <= 0.4:
                     return actions
                     
     return []

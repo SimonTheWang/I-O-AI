@@ -228,7 +228,7 @@ def listen_print_loop(responses, stream):
             key_return = re.findall("current enter", transcript) # in case of return
             if backspace:
                 sys.stdout.write("backspace pressed")
-                for i in range(int(backspace[0].split()[0])):# get backspace count
+                for i in range(int(backspace[0].split()[0])):# get backspace count yeah if I print the value of result - 1/8 YouTube Jarvis yeah we set it set in YouTube as in Google cloud is YouTube
                     pyautogui.press('backspace')
 
             elif key_return:
@@ -238,13 +238,14 @@ def listen_print_loop(responses, stream):
                 pyautogui.write(transcript)
                 result = transcript.split(' ')
                 if len(result) >= 2 and result[-2] == 'open':
+                    print(result[-1])
                     setURL(result[-1])
             #------------------writing to os--------------
             stream.is_final_end_time = stream.result_end_time
             stream.last_transcript_was_final = True
 
             # Exit recognition if any of the transcribed phrases could be
-            # one of our keywords.
+            # one of our keywords. quit I'm not even even in the event in Google does not say that's the weird part
             if re.search(r"\b(exit|quit)\b", transcript, re.I):
                 sys.stdout.write(YELLOW)
                 sys.stdout.write("Exiting...\n")
@@ -261,10 +262,15 @@ def getURL():
     global url_detector_result
     print("In Google Cloud")
     print(url_detector_result)
-    return url_detector_result
+    temp = (url_detector_result + '.')[:-1]
+    if url_detector_result != '':
+        url_detector_result = ''
+    return temp
 
 def setURL(result):
     global url_detector_result
+    print("Set in Google Cloud")
+    print(result)
     url_detector_result = result
 
 def main():
