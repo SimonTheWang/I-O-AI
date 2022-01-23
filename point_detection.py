@@ -3,6 +3,7 @@ import dlib
 import numpy as np
 import pyautogui
 import time
+from pymouse import PyMouse
 
 fname = './models/shape_predictor_68_face_landmarks_GTX.dat'
 detector = dlib.get_frontal_face_detector()
@@ -32,21 +33,21 @@ def measureHead(frame):
         return nose
     return None
 
-def run(frame, hand):
+def run(frame, mouse):
     global og_nose
-    pyautogui.FAILSAFE = False
-    (maxScreenX, maxScreenY) = pyautogui.size()
-    (oldMouseX, oldMouseY) = pyautogui.position()
+    # pyautogui.FAILSAFE = False
+    (maxScreenX, maxScreenY) = (1920, 1080)
+    (oldMouseX, oldMouseY) = mouse.position()
     oldMouseX = maxScreenX - oldMouseX
-    baseMoveX = maxScreenX/maxScreenX
-    baseMoveY = maxScreenY/maxScreenY
+    baseMoveX = maxScreenX/400
+    baseMoveY = maxScreenY/250
 
     positionDiff = [0,0] #(x,y)
     # calcultate change in nose position stored in diffIndex
     
-    nose = (hand['x']*maxScreenX,hand['y']*maxScreenY)
-    print(nose)
-    # nose = measureHead(frame)
+    # nose = (hand['x']*maxScreenX,hand['y']*maxScreenY)
+    # print(nose)
+    nose = measureHead(frame)
 
     if og_nose is None:
         og_nose = nose
@@ -73,6 +74,7 @@ def run(frame, hand):
             elif newYCoord <= 0:
                 newYCoord = 1
             
-        pyautogui.moveTo(maxScreenX-nose[0], nose[1])
+        # pyautogui.moveTo(maxScreenX-nose[0], nose[1])
+        mouse.move(maxScreenX-int(newXCoord), int(newYCoord))
         # pyautogui.moveTo(maxScreenX-int(newXCoord), int(newYCoord))
         # time.sleep(.1)

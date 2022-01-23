@@ -35,6 +35,7 @@ fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 savedCommands = {}
 
 isLearning = False
+isToggle = True
 learnCommandName = ""
 
 pyautogui.PAUSE = 1
@@ -68,6 +69,7 @@ def displayFrame(frameArg=None):
     return frame1
 
 def recordOnce(hands):
+    global isToggle
     ret, frame = cap.read()
     #Unedit the below line if your live feed is produced upsidedown
     #flipped = cv2.flip(frame, flipCode = -1)
@@ -99,9 +101,11 @@ def recordOnce(hands):
             'y': normalizedList[8].y,
             'z': normalizedList[8].z,
         }
-        # run(frame1, wrist)
-        hand = (wrist['x'] * resolution[0], wrist['y'] * resolution[1])
-        mouse.move(int(resolution[0]-hand[0]), int(hand[1]))
+        if (isToggle):
+            hand = (wrist['x'] * resolution[0], wrist['y'] * resolution[1])
+            mouse.move(int(resolution[0]-hand[0]), int(hand[1]))
+    if (not isToggle):
+        run(frame1, mouse)
     return (normalizedList, frame1)
 
 def learnCommand(commandName, btn, hands, root, panel):
@@ -288,17 +292,24 @@ def main(root):
     
     clicked = StringVar()
 
-    clicked.set('click')
+    clicked.set('right')
 
     drop = ttk.OptionMenu(learnFrame, clicked, *options).grid(row=0, column=0)
 
     def learnButtonFn():
         global isLearning
-        global learnCommandName
+        global learnCommandNameEVOLVES
         learnCommandName = clicked.get()
         isLearning = True
-        
-    learnClickButton = Button(learnFrame, text="Learn!", command=learnButtonFn).grid(row=0, column=1)
+    
+    learnClickButton = Button(learnFrame, text="Learn", command=learnButtonFn).grid(row=0, column=1)
+
+    def toggleBtnFn():
+        global isToggle
+        isToggle = not isToggle
+    faceFrame = LabelFrame(root, text="Toggle", padx=5, pady=5)
+    faceFrame.pack(side=LEFT, padx=10, pady=10)
+    toggleButton = Button(faceFrame, text="Toggle", command=toggleBtnFn).grid(row=0, column=0)
 
     # Flags to help matching    
     global savedCommands
