@@ -215,12 +215,25 @@ def listen_print_loop(responses, stream):
         # line, so subsequent lines will overwrite them.
 
         if result.is_final:
-
             sys.stdout.write(GREEN)
             sys.stdout.write("\033[K")
-            sys.stdout.write(str(corrected_time) + ": " + transcript + "\n")
-            pyautogui.write(transcript)   
 
+
+            sys.stdout.write(str(corrected_time) + ": " + transcript + "\n")
+            #------------------writing to os--------------
+            backspace = re.findall("[0-9]+ backspace$", transcript) # in case of backspace
+            key_return = re.findall("current enter", transcript) # in case of return
+            if backspace:
+                sys.stdout.write("backspace pressed")
+                for i in range(int(backspace[0].split()[0])):# get backspace count
+                    pyautogui.press('backspace')
+
+            elif key_return:
+                sys.stdout.write("enter key pressed")
+                pyautogui.press('enter')
+            else:
+                pyautogui.write(transcript)   
+            #------------------writing to os--------------
             stream.is_final_end_time = stream.result_end_time
             stream.last_transcript_was_final = True
 
