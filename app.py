@@ -58,8 +58,8 @@ def displayFrame(frameArg=None):
     if frameArg:
         frame = frameArg
     frame1 = cv2.resize(frame, (640, 480))
-    # run(frame1)
-    # cv2.imshow('Frame', frame1)
+    run(frame1)
+
     key = cv2.waitKey(1) & 0xFF
     return frame1
 
@@ -70,7 +70,7 @@ def recordOnce(hands):
     
     #Determines the frame size, 640 x 480 offers a nice balance between speed and accurate identification
     frame1 = cv2.resize(frame, (640, 480))
-    # run(frame1)
+    run(frame1)
     
     #produces the hand framework overlay ontop of the hand, you can choose the colour here too)
     results = hands.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
@@ -117,25 +117,6 @@ def learnCommand(commandName, btn, hands, root, panel):
     start = time.time()
     tempCommand = {}
 
-    if commandName == 'open-url':
-        while True:
-            difference = time.time() - start
-            if difference >= 5:
-                break
-            
-            number = math.ceil(5 - difference)
-            btn.config(text=f'Listening for URL in {number} seconds...')
-            updateGUI(root, panel, displayFrame())
-        
-        URL = text_to_speech.getURL()
-        print("In app.py")
-        print(URL)
-        commandArray = commandMap['open-url']
-        commandArray.append([pyautogui.typewrite, [URL]])
-        commandArray.append([pyautogui.press, ['enter']])
-        commandMap['open-url'] = commandArray
-        start = time.time()
-
     while True:
         (ret, currentFrame) = recordOnce(hands)
         updateGUI(root, panel, currentFrame)
@@ -174,8 +155,6 @@ def learnCommand(commandName, btn, hands, root, panel):
         number = math.ceil(5 - difference)
         btn.config(text=f'Capturing end sign in {number} seconds...')
     
-    btn.config(text="Snapshot!")
-
     (normalizedList, currentFrame) = recordOnce(hands)
     updateGUI(root, panel, currentFrame)
 
@@ -191,6 +170,29 @@ def learnCommand(commandName, btn, hands, root, panel):
     } 
     tempCommand['combo']['endingSign'] = parseNormalizedList(normalizedList)
     tempCommand['combo']['difference'] = difference
+
+    start = time.time()
+
+    if commandName == 'open-url':
+        while True:
+            difference = time.time() - start
+            if difference >= 5:
+                break
+            
+            number = math.ceil(5 - difference)
+            btn.config(text=f'Listening for URL in {number} seconds...')
+            updateGUI(root, panel, displayFrame())
+        
+        URL = text_to_speech.getURL()
+        print("In app.py")
+        print(URL)
+        commandArray = commandMap['open-url']
+        commandArray.append([pyautogui.typewrite, [URL]])
+        commandArray.append([pyautogui.press, ['enter']])
+        commandMap['open-url'] = commandArray
+        start = time.time()
+
+    btn.config(text="Finished capturing!")
 
     savedCommands[commandName] = {
         'combo': {
