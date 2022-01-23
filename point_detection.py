@@ -3,7 +3,7 @@ import dlib
 import numpy as np
 import pyautogui
 
-fname = './models/shape_predictor_68_face_landmarks.dat'
+fname = './models/shape_predictor_68_face_landmarks_GTX.dat'
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(fname)
 previous = None
