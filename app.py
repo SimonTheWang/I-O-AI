@@ -1,7 +1,5 @@
-from inspect import currentframe
 from tkinter import *
 from tkinter import ttk
-from tkinter import messagebox
 import cv2
 import dlib
 import pyautogui
@@ -17,7 +15,6 @@ import edwin
 import pyautogui
 
 import threading
-import sys
 
 drawingModule = mediapipe.solutions.drawing_utils
 handsModule = mediapipe.solutions.hands
@@ -58,7 +55,7 @@ def displayFrame(frameArg=None):
     if frameArg:
         frame = frameArg
     frame1 = cv2.resize(frame, (640, 480))
-    run(frame1)
+    # run(frame1)
 
     key = cv2.waitKey(1) & 0xFF
     return frame1
@@ -70,7 +67,7 @@ def recordOnce(hands):
     
     #Determines the frame size, 640 x 480 offers a nice balance between speed and accurate identification
     frame1 = cv2.resize(frame, (640, 480))
-    run(frame1)
+    # run(frame1)
     
     #produces the hand framework overlay ontop of the hand, you can choose the colour here too)
     results = hands.process(cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB))
@@ -100,6 +97,10 @@ def learnCommand(commandName, btn, hands, root, panel):
         'click': [[pyautogui.click, []]],
         'scroll': [[pyautogui.press, ['pdgn']]],
         'right-click': [[pyautogui.click, ['right']]],
+        'open-app': [
+            [pyautogui.press, ['win']],
+            [pyautogui.typewrite, ['chrome']]
+        ],
         'open-browser': [
             [pyautogui.press, ['win']],
             [pyautogui.typewrite, ['chrome']],
@@ -172,26 +173,43 @@ def learnCommand(commandName, btn, hands, root, panel):
 
     start = time.time()
 
-    if commandName == 'open-url':
+    if commandName == 'open-url' or commandName == 'open-app':
+
+        formattedString = ''
+        if commandName == 'open-url':
+            formattedString = 'URL'
+        else:
+            formattedString = 'app'
+
         while True:
             difference = time.time() - start
             if difference >= 5:
                 break
             
             number = math.ceil(5 - difference)
-            btn.config(text=f'Listening for URL in {number} seconds...')
+            btn.config(text=f'Listening for {formattedString} in {number} seconds...')
             updateGUI(root, panel, displayFrame())
         
+        start = time.time()
         URL = text_to_speech.getURL()
-        print("In app.py")
-        print(URL)
-        commandArray = commandMap['open-url']
+        if URL == '':
+            while True:
+                difference = time.time() - start
+                if difference >= 5:
+                    break
+                
+                number = math.ceil(3 - difference)
+                btn.config(text=f'Fetching for {formattedString} in {number} seconds...')
+                updateGUI(root, panel, displayFrame())
+            URL = text_to_speech.getURL()
+        commandArray = commandMap[commandName]
         commandArray.append([pyautogui.typewrite, [URL]])
         commandArray.append([pyautogui.press, ['enter']])
-        commandMap['open-url'] = commandArray
+        commandMap[commandName] = commandArray
         start = time.time()
 
     btn.config(text="Finished capturing!")
+    start = time.time()
 
     savedCommands[commandName] = {
         'combo': {
@@ -214,6 +232,11 @@ def learnCommand(commandName, btn, hands, root, panel):
     print(savedCommands.get(commandName).get('combo').get('difference'))
     print("Command is")
     print(savedCommands[commandName])
+
+    while time.time() - start < 2:
+        pass
+
+    btn.config(text="Looking for a sign...")
 
 def performActions(actions):
     for action in actions:
@@ -251,10 +274,11 @@ def main(root):
     options = [
         'click',
         'click',
+        'open-app',
+        'open-browser',
+        'open-url',
         'right-click',
         'scroll',
-        'open-url',
-        'open-browser'
     ]
 
     clicked = StringVar()
